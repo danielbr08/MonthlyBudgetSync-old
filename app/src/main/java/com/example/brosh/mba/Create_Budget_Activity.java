@@ -144,6 +144,7 @@ public class Create_Budget_Activity extends AppCompatActivity {
         closeButton.setTypeface(null, Typeface.BOLD);
         closeButton.setText("צור");
         closeButton.setOnClickListener(new View.OnClickListener() {
+            @RequiresApi(api = Build.VERSION_CODES.O)
             public void onClick(View view) {
                 setBudgets();
                 if (!isInputValid || allBudgets.size() == 0)
@@ -167,6 +168,7 @@ public class Create_Budget_Activity extends AppCompatActivity {
     public void setBudgets() {
         allCategories.clear();
         allBudgets.clear();
+        int priorityCat = 1;
         for (int i = 2; i < LLMain.getChildCount() - 2; i++) {
             EditText categoryET = ((EditText) ((LinearLayout) LLMain.getChildAt(i)).getChildAt(1));
             EditText valueET = ((EditText) ((LinearLayout) LLMain.getChildAt(i)).getChildAt(2));
@@ -202,7 +204,7 @@ public class Create_Budget_Activity extends AppCompatActivity {
             //String categorySon = ((EditText)((LinearLayout)LLMain.getChildAt(i)).getChildAt(1)).getText().toString();
             verifyBudgetInput(categoryET, valueET, constPaymentCB, shopET, chargeDaySP);// chargeDayET);
             if (isInputValid)
-                allBudgets.add(new Budget(category,value,constPayment,shop,chargeDay));
+                allBudgets.add(new Budget(priorityCat++,category,value,constPayment,shop,chargeDay));
             else
                 return;
         }
@@ -292,6 +294,7 @@ public class Create_Budget_Activity extends AppCompatActivity {
     public void showQuestion(String message)
     {
         DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
+            @RequiresApi(api = Build.VERSION_CODES.O)
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 switch (which){
@@ -337,6 +340,7 @@ public class Create_Budget_Activity extends AppCompatActivity {
 
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     public void writeBudget(long budgetNumber)
     {
         long status = 0;
@@ -354,11 +358,13 @@ public class Create_Budget_Activity extends AppCompatActivity {
                 status = monthlyBudgetDB.insertSubCategoryData(categoryID, bgt.getCategorySon());
                 subCategoryID = monthlyBudgetDB.getSubCategoryId(categoryID, bgt.getCategorySon());
             }
-            status = monthlyBudgetDB.insertBudgetTableData(budgetNumber, categoryID, subCategoryID, bgt.getValue(), bgt.isConstPayment(), bgt.getShop(), bgt.getChargeDay());
+            int catPriority = bgt.getCatPriority();
+            status = monthlyBudgetDB.insertBudgetTableData(budgetNumber, categoryID, subCategoryID,catPriority, bgt.getValue(), bgt.isConstPayment(), bgt.getShop(), bgt.getChargeDay());
         }
     }
 
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     private void questionTrueAnswer()
     {
         int budgetNumber = monthlyBudgetDB.getMaxBudgetNumberBGT() + 1;
@@ -378,6 +384,7 @@ public class Create_Budget_Activity extends AppCompatActivity {
         writeToFile(lines, fileName, dirPath);
     }*/
 
+    @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR1)
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -401,6 +408,7 @@ public class Create_Budget_Activity extends AppCompatActivity {
         setBudgetGui();
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR1)
     public void setTitleRow()
     {
         final LinearLayout titleLL = new LinearLayout(Create_Budget_Activity.this);

@@ -25,28 +25,36 @@ public class Budget {
     private boolean isConstPayment;
     private String shop;
     private int chargeDay;
+    private int catPriority;
 
-    public Budget(String category, int value, boolean isConstPayment, String shop, int chargeDay) {
+    public Budget(int catPriority,String category, int value, boolean isConstPayment, String shop, int chargeDay) {
         this.category = category;
         this.value = value;
         this.isConstPayment = isConstPayment;
         this.shop = shop;
         this.chargeDay = chargeDay;
-
-        if(categorySon == null || categorySon.equals(""))
-            this.categorySon = "ללא";
+        this.catPriority = catPriority;
     }
 
-    public Budget(String category, String categorySon, int value, boolean isConstPayment, String shop, int chargeDay) {
+    public Budget(int catPriority,String category, String categorySon, int value, boolean isConstPayment, String shop, int chargeDay) {
         this.category = category;
         this.categorySon = categorySon;
         this.value = value;
         this.isConstPayment = isConstPayment;
         this.shop = shop;
         this.chargeDay = chargeDay;
+        this.catPriority = catPriority;
+    }
 
-        if(categorySon == null || categorySon.equals(""))
-            this.categorySon = "ללא";
+    public boolean equals(Object object2) {
+        return object2 instanceof Budget
+                && category.equals(((Budget)object2).category)
+                && categorySon.equals(((Budget)object2).categorySon)
+                && value ==((Budget)object2).value
+                && isConstPayment ==((Budget)object2).isConstPayment
+                && ((shop == ((Budget)object2).shop)//null
+                || shop != null && shop.equals(((Budget)object2).shop))
+                && chargeDay ==((Budget)object2).chargeDay;
     }
 
     public void setCategory(String category) {
@@ -83,5 +91,13 @@ public class Budget {
 
     public void setChargeDay(Date paymentDate) {
         this.chargeDay = chargeDay;
+    }
+
+    public int getCatPriority() {
+        return catPriority;
+    }
+
+    public void setCatPriority(int catPriority) {
+        this.catPriority = catPriority;
     }
 }

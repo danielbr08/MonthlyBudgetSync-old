@@ -7,6 +7,8 @@ import android.os.Build;
 import android.support.annotation.RequiresApi;
 import android.text.util.Linkify;
 import android.util.Log;
+import android.view.View;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import java.io.BufferedReader;
@@ -49,7 +51,7 @@ public class global {
     public static int TRAN_ID_PER_MONTH_NUMERATOR = 1;
     public static String DCIM = "";
     public static String PROJECT_PATH = "";
-    public static String DB_FOLDER_PATH = "/data/data/com.example.brosh.mba/databases";
+    public static String DB_FOLDER_PATH = "/data/data/monthlybudget.apps.danielbrosh.monthlybudget/databases";
     public static String DB_FILE_NAME = "MonthlyBudget";
     public static String FILE_NAME = "Monthly Budget";
     public static String FILE_NAME_BUDGET = "Budget";
@@ -68,13 +70,18 @@ public class global {
     public static long lastUpdatedTimeMillis = 0;
     public static long myLastUpdatedTimeMillis = 0;
     public static String reasonCheckFileChanged = "Show";
-
     public static Transaction transactionAddSync = null;
     public static Category categoryUpdateSync = null;
 
 
     public static Thread closeActivity;
 
+
+    public static String DEFAULT_LANGUAGE;
+    public static boolean IS_AD_ENEABLED = true;
+    public static ArrayList<String> LOG_REPORT = new ArrayList<>();
+
+    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR1)
     public static void setHeaderProperties(TextView tv)
     {
         tv.setTypeface(null, Typeface.BOLD);
@@ -82,6 +89,44 @@ public class global {
         tv.setTextSize(15);
         tv.setClickable(true);
         Linkify.addLinks(tv,Linkify.ALL);
+    }
+
+    public static String getSentenceCapitalLetter(String sentence,char separator)
+    {
+        if(sentence.indexOf(separator) == -1)
+            return getWordCapitalLetter(sentence);
+        return new String(getWordCapitalLetter(sentence.substring(0,sentence.indexOf(separator)+1)) + getSentenceCapitalLetter(sentence.substring(sentence.indexOf(separator)+1),separator));
+    }
+
+
+    public static String getWordCapitalLetter(String word)
+    {
+        char firstLetter = word.charAt(0);
+        if(firstLetter >= 97 && firstLetter <= 122)
+            firstLetter -= 32;
+        return new String(firstLetter + word.substring(1));
+    }
+
+    public static void reverseLinearLayout(LinearLayout linearLayout)
+    {
+        for(int i = linearLayout.getChildCount()-1 ; i >= 0 ; i--)
+        {
+            View item = linearLayout.getChildAt(i);
+            linearLayout.removeViewAt(i);
+            linearLayout.addView(item);
+        }
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR1)
+    public static void setLanguageConf(LinearLayout l)
+    {
+        for (int i = 0;i < l.getChildCount();i++)
+        {
+            View v = l.getChildAt(i);
+            v.setTextDirection(View.TEXT_DIRECTION_LTR);
+            v.setTextAlignment(View.TEXT_ALIGNMENT_TEXT_START);
+        }
+        reverseLinearLayout(l);
     }
 
     public static String wrapStrForDb(String str)
@@ -161,8 +206,8 @@ public class global {
         writeToFile(lines,FILE_NAME,PROJECT_PATH);
     }
 
-    /*   Input: Separator for category
-     Output: A List of all the categories and values of budget file */
+    /*    *//*   Input: Separator for category
+     Output: A List of all the categories and values of budget file *//*
     public static ArrayList<Budget> getBudgetFromFile(String budgetSeperator)
     {
         String filePath = PROJECT_PATH + "/" + FILE_NAME_BUDGET + "." + SUFFIX;
@@ -170,8 +215,8 @@ public class global {
         if(budgetLines == null)
             return null;
         ArrayList<Budget>  BudgetList = new ArrayList<Budget>();
-/*        if(categoriesLines == null)
-            return null;*/
+*//*        if(categoriesLines == null)
+            return null;*//*
         for (String line  : budgetLines)
         {
             String [] splitterLine = line.split(budgetSeperator);
@@ -188,7 +233,7 @@ public class global {
             BudgetList.add(new Budget(categoryName,budget,isConstPayment,shop,chargeDay));
         }
         return BudgetList;
-    }
+    }*/
 
     /*  Input: Path of file
     Output: A list with all of the lines from the file input   */
@@ -368,7 +413,7 @@ public class global {
                 }
             }
         });
-    closeActivity.run();
+        closeActivity.run();
     }
 
 /*
@@ -749,7 +794,7 @@ public class global {
     }
 */
 
-//  Input: String with date include day
+    //  Input: String with date include day
     public static String reverseDateString(String date, String separator)
     {
         String[] l = date.split(separator);
@@ -814,19 +859,19 @@ public class global {
 
     public static Comparator<Transaction> COMPARE_BY_PAYMENT_METHOD = new Comparator<Transaction>() {
         public int compare(Transaction one, Transaction other) {
-            return one.getPaymentMethod().compareTo(other.getPaymentMethod());
+            return one.getPaymentMethod().compareToIgnoreCase(other.getPaymentMethod());
         }
     };
 
     public static Comparator<Transaction> COMPARE_BY_Category = new Comparator<Transaction>() {
         public int compare(Transaction one, Transaction other) {
-            return one.getCategory().compareTo(other.getCategory());
+            return one.getCategory().compareToIgnoreCase(other.getCategory());
         }
     };
 
     public static Comparator<Transaction> COMPARE_BY_SHOP = new Comparator<Transaction>() {
         public int compare(Transaction one, Transaction other) {
-            return one.getShop().compareTo(other.getShop());
+            return one.getShop().compareToIgnoreCase(other.getShop());
         }
     };
 
@@ -854,72 +899,110 @@ public class global {
         }
     };
 
-    public static void sort(String sortBy,char ascOrDesc)
-    {
-        switch(sortBy)
-        {
-            case "מזהה":
-            {
-                if(ascOrDesc == UP_ARROW)
-                    Collections.sort(month.getTransactions(),global.COMPARE_BY_ID);
-                else if(ascOrDesc == DOWN_ARROW)
-                    Collections.sort(month.getTransactions(), Collections.reverseOrder(global.COMPARE_BY_ID));
-                break;
-            }
-
-            case "קטגוריה":
-            {
-                if(ascOrDesc == UP_ARROW)
-                    Collections.sort(month.getTransactions(),global.COMPARE_BY_Category);
-                else if(ascOrDesc == DOWN_ARROW)
-                    Collections.sort(month.getTransactions(), Collections.reverseOrder(global.COMPARE_BY_Category));
-                break;
-            }
-            case "א.תשלום":
-            {
-                if(ascOrDesc == UP_ARROW)
-                    Collections.sort(month.getTransactions(), global.COMPARE_BY_PAYMENT_METHOD);
-                else if(ascOrDesc == DOWN_ARROW)
-                    Collections.sort(month.getTransactions(), Collections.reverseOrder(global.COMPARE_BY_PAYMENT_METHOD));
-                break;
-            }
-            case "חנות":
-            {
-                if(ascOrDesc == UP_ARROW)
-                    Collections.sort(month.getTransactions(), global.COMPARE_BY_SHOP);
-                else if(ascOrDesc == DOWN_ARROW)
-                    Collections.sort(month.getTransactions(), Collections.reverseOrder(global.COMPARE_BY_SHOP));
-                break;
-            }
-            case "ת.עסקה":
-            {
-                if(ascOrDesc == UP_ARROW)
-                    Collections.sort(month.getTransactions(), global.COMPARE_BY_TRANSACTION_DATE);
-                else if(ascOrDesc == DOWN_ARROW)
-                    Collections.sort(month.getTransactions(), Collections.reverseOrder(global.COMPARE_BY_TRANSACTION_DATE));
-                break;
-            }
-            case "סכום":
-            {
-                if(ascOrDesc == UP_ARROW)
-                    Collections.sort(month.getTransactions(), global.COMPARE_BY_PRICE);
-                else if(ascOrDesc == DOWN_ARROW)
-                    Collections.sort(month.getTransactions(), Collections.reverseOrder(global.COMPARE_BY_PRICE));
-                break;
-            }
-            case "ת.רישום":
-            {
-                if(ascOrDesc == UP_ARROW)
-                    Collections.sort(month.getTransactions(), global.COMPARE_BY_REGISTRATION_DATE);
-                else if(ascOrDesc == DOWN_ARROW)
-                    Collections.sort(month.getTransactions(), Collections.reverseOrder(global.COMPARE_BY_REGISTRATION_DATE));
-                break;
-            }
-            default:
-                Collections.sort(month.getTransactions(), global.COMPARE_BY_ID);
+/*    public static Comparator<Budget> COMPARE_BY_CATEGORY_PRIORITY = new Comparator<Budget>() {
+        public int compare(Budget one, Budget other) {
+            return Integer.compare(one.getCatPriority(), other.getCatPriority());
         }
+    };*/
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    public static void sort(String sortBy, char ascOrDesc)
+    {
+        if(sortBy.equals("מזהה"))
+        {
+            if(ascOrDesc == UP_ARROW)
+                Collections.sort(month.getTransactions(),global.COMPARE_BY_ID);
+            else if(ascOrDesc == DOWN_ARROW)
+                Collections.sort(month.getTransactions(), Collections.reverseOrder(global.COMPARE_BY_ID));
+        }
+        else if(sortBy.equals(getWordCapitalLetter("קטגוריה")))
+        {
+            if(ascOrDesc == UP_ARROW)
+                Collections.sort(month.getTransactions(),global.COMPARE_BY_Category);
+            else if(ascOrDesc == DOWN_ARROW)
+                Collections.sort(month.getTransactions(), Collections.reverseOrder(global.COMPARE_BY_Category));
+        }
+        else if(sortBy.equals(getSentenceCapitalLetter("א.תשלום",'.')))
+        {
+            if(ascOrDesc == UP_ARROW)
+                Collections.sort(month.getTransactions(), global.COMPARE_BY_PAYMENT_METHOD);
+            else if(ascOrDesc == DOWN_ARROW)
+                Collections.sort(month.getTransactions(), Collections.reverseOrder(global.COMPARE_BY_PAYMENT_METHOD));
+        }
+        else if(sortBy.equals(getWordCapitalLetter("חנות")))
+        {
+            if(ascOrDesc == UP_ARROW)
+                Collections.sort(month.getTransactions(), global.COMPARE_BY_SHOP);
+            else if(ascOrDesc == DOWN_ARROW)
+                Collections.sort(month.getTransactions(), Collections.reverseOrder(global.COMPARE_BY_SHOP));
+        }
+        else if(sortBy.equals(getSentenceCapitalLetter("ת.עסקה",'.')))
+        {
+            if(ascOrDesc == UP_ARROW)
+                Collections.sort(month.getTransactions(), global.COMPARE_BY_TRANSACTION_DATE);
+            else if(ascOrDesc == DOWN_ARROW)
+                Collections.sort(month.getTransactions(), Collections.reverseOrder(global.COMPARE_BY_TRANSACTION_DATE));
+        }
+        else if(sortBy.equals(getWordCapitalLetter("סכום")))
+        {
+            if(ascOrDesc == UP_ARROW)
+                Collections.sort(month.getTransactions(), global.COMPARE_BY_PRICE);
+            else if(ascOrDesc == DOWN_ARROW)
+                Collections.sort(month.getTransactions(), Collections.reverseOrder(global.COMPARE_BY_PRICE));
+        }
+        else if(sortBy.equals(getSentenceCapitalLetter("ת.רישום",'.')))
+        {
+            if(ascOrDesc == UP_ARROW)
+                Collections.sort(month.getTransactions(), global.COMPARE_BY_REGISTRATION_DATE);
+            else if(ascOrDesc == DOWN_ARROW)
+                Collections.sort(month.getTransactions(), Collections.reverseOrder(global.COMPARE_BY_REGISTRATION_DATE));
+        }
+/*
+        else if(sortBy.equals(language.regisrationDateName))
+        {
+            if(ascOrDesc == UP_ARROW)
+                Collections.sort(month.getTransactions(), global.COMPARE_BY_CATEGORY_PRIORITY);
+            else if(ascOrDesc == DOWN_ARROW)
+                Collections.sort(month.getTransactions(), Collections.reverseOrder(global.COMPARE_BY_CATEGORY_PRIORITY));
+        }*/
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    public static void copyFile(String sourceFilePath, String destinationtDirPath)
+    {
+        File src = new File(sourceFilePath);
+        File destDir = new File(destinationtDirPath);
+        File destFile = new File(destinationtDirPath + "/" + DB_FILE_NAME + "." + DB_SUFFIX);
+        try {
+            // make sure the target file exists
+            if (src.exists())
+            {
+                if(!destDir.exists())
+                    destDir.mkdir();
+
+                InputStream in = new FileInputStream(src);
+                OutputStream out = new FileOutputStream(destFile);
+
+                // Copy the bits from instream to outstream
+                byte[] buf = new byte[1024];
+                int len;
+
+                while ((len = in.read(buf)) > 0) {
+                    out.write(buf, 0, len);
+                }
+                in.close();
+                out.close();
+            }
+            else
+            {
+                // Get error file not found
+            }
+        }
+        catch(Exception e)
+        {
+            String s = e.getMessage().toString();
+        }
+    }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     public static void copyFile(String sourceFilePath, String destinationtDirPath,String fileName, String suffix)
