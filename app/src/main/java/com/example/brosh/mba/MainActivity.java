@@ -473,7 +473,7 @@ public void downloadCommonFile(final String reason)
     {
 
         //global.setCatArrayHebNames();
-        ArrayList<String> allMonths = monthlyBudgetDB.getAllMonthesYearMonth();//getAllMonthes();
+        ArrayList<String> allMonths = monthlyBudgetDB.getAllMonthesYearMonth("DESC");//getAllMonthes();
 
         ArrayAdapter<String> adapter;
         adapter = new ArrayAdapter<String>(this,

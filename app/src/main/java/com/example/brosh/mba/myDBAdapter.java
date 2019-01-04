@@ -8,6 +8,8 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.os.Build;
+import android.support.annotation.RequiresApi;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -16,6 +18,7 @@ import static com.example.brosh.mba.MainActivity.month;
 import static com.example.brosh.mba.MainActivity.monthlyBudgetDB;
 import static com.example.brosh.mba.global.DB_FILE_NAME;
 import static com.example.brosh.mba.global.DB_SUFFIX;
+import static com.example.brosh.mba.global.LOG_REPORT;
 import static com.example.brosh.mba.global.TRAN_ID_PER_MONTH_NUMERATOR;
 import static com.example.brosh.mba.global.convertDateToString;
 import static com.example.brosh.mba.global.convertStringToDate;
@@ -41,8 +44,8 @@ public class myDBAdapter {
         String wrappedRefMonth = wrapStrForDb(reverseDateString(convertDateToString(refMonth,dateFormat),"/"));
         SQLiteDatabase db = myhelper.getWritableDatabase();
         Cursor c = db.rawQuery("SELECT MAX(" +  myDbHelper.transIDPerMonth + ") " +
-                                   "FROM " + myhelper.TRANSACTION_TABLE + " " +
-                                   "WHERE " + myhelper.transReferenceMonth + " = " + wrappedRefMonth, null);
+                "FROM " + myhelper.TRANSACTION_TABLE + " " +
+                "WHERE " + myhelper.transReferenceMonth + " = " + wrappedRefMonth, null);
         if (c.moveToFirst())
             if (c.moveToFirst())
             {
@@ -50,6 +53,7 @@ public class myDBAdapter {
                 c.close();
                 return maxIDPerMonth;
             }
+        LOG_REPORT.add("No data found in getMaxIDPerMonthTRN method. ref month: " + wrappedRefMonth +"\n");
         return 0;
     }
 
@@ -76,6 +80,7 @@ public class myDBAdapter {
             c.close();
             return maxBudgetNumber;
         }
+        LOG_REPORT.add("No data found in getMaxBudgetNumberBGT method." +"\n");
         return 0;
     }
 
@@ -90,6 +95,7 @@ public class myDBAdapter {
             c.close();
             return isCurrentRefMonthExists;
         }
+        LOG_REPORT.add("No data found in checkCurrentRefMonthExists method. ref month: " + wrappedStrRefMonth +"\n");
         return false;
     }
 
@@ -103,31 +109,80 @@ public class myDBAdapter {
             c.close();
             return isBudgetExists;
         }
+        LOG_REPORT.add("No data found in checkBudgetExists method." +"\n");
         return false;
     }
 
+    public boolean updateBudgetNumberMB(Date refMonth,int newBudgetNumber)
+    {
+        SQLiteDatabase db = myhelper.getWritableDatabase();
+        String strRefMonth = wrapStrForDb(reverseDateString(convertDateToString(refMonth,dateFormat),"/"));
+
+        String setNewBudgetNumberMB = "UPDATE " + myhelper.MONTHLY_BUDGET_TABLE +
+                " SET " + myDbHelper.monthlyBudgetNumber + " = " + newBudgetNumber +
+                " WHERE " + myDbHelper.monthlyBudgetRefMonth + " = " + strRefMonth;
+        try
+        {
+            db.execSQL(setNewBudgetNumberMB);
+        }
+        catch(Exception e)
+        {
+            LOG_REPORT.add("Exception in updateBudgetNumberMB method. ref month: " + strRefMonth + ",new budget number" + newBudgetNumber + "\n" + e.getMessage().toString() + "\n");
+            String error = e.getMessage().toString();
+            return false;
+        }
+        return true;
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    public long insertAddedCategoriesToMBFromBudget(Date refMonth, ArrayList<Budget> newBudgets)
+    {
+        long status = 0;
+        boolean isErrorOccurred = false;
+        int maxBudgetNumber = monthlyBudgetDB.getMaxBudgetNumberBGT();
+        for (Budget bgt:newBudgets)
+        {
+            int categoryID = monthlyBudgetDB.getCategoryId(bgt.getCategory());
+            int subCategoryID = monthlyBudgetDB.getSubCategoryId(categoryID,bgt.getCategorySon());
+            int budget = bgt.getValue();
+            int balance = bgt.getValue();
+
+            status = monthlyBudgetDB.insertMonthlyBudgetData(refMonth, categoryID, subCategoryID, maxBudgetNumber, budget, balance);
+            if(status == -1) {
+                LOG_REPORT.add("Insertion failed in insertAddedCategoriesToMBFromBudget method. ref month: " + refMonth + ", max budget number: " + maxBudgetNumber+ ", category ID: " + categoryID + "\n");
+                isErrorOccurred = true;
+            }
+        }
+        return status;
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
     public long writeMBFromBudget(Date refMonth)
     {
         SQLiteDatabase db = myhelper.getWritableDatabase();
         int maxBudgetNumber = getMaxBudgetNumberBGT();
         long status = 0;
-        boolean is_error_exists = false;
+        boolean isErrorOccurred = false;
 
-        String selectMaxBudgetData = "SELECT " + myDbHelper.budgetCategoryID + "," + myDbHelper.budgetSubCategoryID + "," + myDbHelper.budgetValue + "," + myDbHelper.budgetIsConstPayment + "," + myDbHelper.budgetShop + "," + myDbHelper.budgetChargeDay + " " +
-                                     "FROM " + myDbHelper.BUDGET_TABLE + " " +
-                                     "WHERE " + myDbHelper.budgetNumber + "=" + maxBudgetNumber;
+        String selectMaxBudgetData = "SELECT " + myDbHelper.budgetCategoryID + "," + myDbHelper.budgetSubCategoryID + "," + myDbHelper.budgetCatPriority + "," + myDbHelper.budgetValue + "," + myDbHelper.budgetIsConstPayment + "," + myDbHelper.budgetShop + "," + myDbHelper.budgetChargeDay + " " +
+                "FROM " + myDbHelper.BUDGET_TABLE + " " +
+                "WHERE " + myDbHelper.budgetNumber + " = " + maxBudgetNumber + " order by " + myDbHelper.budgetCatPriority + " asc";
         Cursor cursor = db.rawQuery( selectMaxBudgetData, null);
         if(cursor.moveToFirst()) {
             do
             {
                 int categoryID = cursor.getInt(cursor.getColumnIndex(myDbHelper.budgetCategoryID));
                 int subCategoryID = cursor.getInt(cursor.getColumnIndex(myDbHelper.budgetSubCategoryID));
+                //int catPriority = cursor.getInt(cursor.getColumnIndex(myDbHelper.budgetCatPriority));
                 int budget = cursor.getInt(cursor.getColumnIndex(myDbHelper.budgetValue));
                 int balance = cursor.getInt(cursor.getColumnIndex(myDbHelper.budgetValue));
 
                 status = monthlyBudgetDB.insertMonthlyBudgetData(refMonth, categoryID, subCategoryID, maxBudgetNumber, budget, balance);
                 if(status == -1)
-                    is_error_exists = true;
+                {
+                    LOG_REPORT.add("No data found in writeMBFromBudget method. ref month: " + refMonth + "\n");
+                    isErrorOccurred = true;
+                }
             }
             while (cursor.moveToNext());
             cursor.close();
@@ -150,6 +205,8 @@ public class myDBAdapter {
             while (cursor.moveToNext());
 
         }
+        LOG_REPORT.add("In method getCategoryIdByName - No category ID for category name " + categoryName + "\n");
+
         return -1;
     }
 
@@ -169,6 +226,7 @@ public class myDBAdapter {
             while (cursor.moveToNext());
 
         }
+        LOG_REPORT.add("In method getSubCategoryIdByName - No sub category ID for sub category name " + subCategoryName + "\n");
         return -1;
     }
 
@@ -182,6 +240,7 @@ public class myDBAdapter {
             cursor.close();
             return categoryName;
         }
+        LOG_REPORT.add("In method getCategoryNameByID - No category name for category ID " + categoryID + "\n");
         return null;
     }
 
@@ -195,9 +254,11 @@ public class myDBAdapter {
             cursor.close();
             return subCategoryName;
         }
+        LOG_REPORT.add("In method getSubCategoryNameByID - No sub category name for sub category ID " + subCategoryID + "\n");
         return null;
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     public boolean setMonthlyBudgetBalance()
     {
         SQLiteDatabase db = myhelper.getWritableDatabase();
@@ -219,6 +280,7 @@ public class myDBAdapter {
             }
             catch(Exception e)
             {
+                LOG_REPORT.add("Exception in setMonthlyBudgetBalance method: (ref month: " + strRefMonth + ",category ID: " + categoryId + ")\n" + e.getMessage().toString() + "\n");
                 String error = e.getMessage().toString();
                 return false;
             }
@@ -227,13 +289,40 @@ public class myDBAdapter {
         return true;
     }
 
-    public ArrayList<String> getAllMonthesYearMonth()
+    public ArrayList<String> getAllShops()
     {
         SQLiteDatabase db = myhelper.getWritableDatabase();
-        String distinctMonthesMB = "SELECT DISTINCT " + myDbHelper.monthlyBudgetRefMonth + " FROM " + myhelper.MONTHLY_BUDGET_TABLE + " ORDER BY " + myDbHelper.monthlyBudgetRefMonth + " DESC";
+        String distinctShops = "SELECT DISTINCT " + myDbHelper.transShop + " FROM " + myhelper.TRANSACTION_TABLE;
+        Cursor cursor = db.rawQuery( distinctShops, null);
+        long status = 0;
+        boolean isErrorOccurred = false;
+        ArrayList<String> allShops = new ArrayList<>();
+
+        if(cursor.moveToFirst())
+        {
+            do {
+                String shop = cursor.getString(cursor.getColumnIndex(myDbHelper.transShop));
+                allShops.add(shop);
+            }
+            while (cursor.moveToNext());
+            cursor.close();
+        }
+        else
+        {
+            LOG_REPORT.add("No data found in getAllShops method." + "\n");
+            status = -1;
+            isErrorOccurred = true;
+        }
+        return allShops;
+    }
+
+    public ArrayList<String> getAllMonthesYearMonth(String ascOrDesc)
+    {
+        SQLiteDatabase db = myhelper.getWritableDatabase();
+        String distinctMonthesMB = "SELECT DISTINCT " + myDbHelper.monthlyBudgetRefMonth + " FROM " + myhelper.MONTHLY_BUDGET_TABLE + " ORDER BY " + myDbHelper.monthlyBudgetRefMonth + " " + ascOrDesc;
         Cursor cursor = db.rawQuery( distinctMonthesMB, null);
         long status = 0;
-        boolean is_error_exists = false;
+        boolean isErrorOccurred = false;
         ArrayList<String> allMonthes = new ArrayList<>();
 
         if(cursor.moveToFirst())
@@ -250,11 +339,12 @@ public class myDBAdapter {
         }
         else
         {
+            LOG_REPORT.add("No data found in getAllMonthesYearMonth method." + "\n");
             status = -1;
-            is_error_exists = true;
+            isErrorOccurred = true;
         }
 
-        if(!is_error_exists)
+        if(!isErrorOccurred)
             return allMonthes;
         return null;
     }
@@ -262,17 +352,18 @@ public class myDBAdapter {
     public ArrayList<Budget> getBudgetDataFromDB(int BudgetNumberBGT) {
         SQLiteDatabase db = myhelper.getWritableDatabase();
         long status = 0;
-        boolean is_error_exists = false;
+        boolean isErrorOccurred = false;
         ArrayList<Budget> allBudget =  new ArrayList<>();
 
-        String selectBudgetData = "SELECT " + myDbHelper.budgetCategoryID + "," + myDbHelper.budgetSubCategoryID + "," + myDbHelper.budgetValue + "," + myDbHelper.budgetIsConstPayment + "," + myDbHelper.budgetShop + "," + myDbHelper.budgetChargeDay + " " +
+        String selectBudgetData = "SELECT " + myDbHelper.budgetCategoryID + "," + myDbHelper.budgetSubCategoryID + "," + myDbHelper.budgetCatPriority + "," + myDbHelper.budgetValue + "," + myDbHelper.budgetIsConstPayment + "," + myDbHelper.budgetShop + "," + myDbHelper.budgetChargeDay + " " +
                 "FROM " + myDbHelper.BUDGET_TABLE + " " +
-                "WHERE " + myDbHelper.budgetNumber + "=" + getMaxBudgetNumberBGT();
+                "WHERE " + myDbHelper.budgetNumber + "=" + BudgetNumberBGT + " ORDER BY " + myDbHelper.budgetCatPriority + " ASC";;
         Cursor cursor = db.rawQuery(selectBudgetData, null);
         if (cursor.moveToFirst()) {
             do {
                 int categoryID = cursor.getInt(cursor.getColumnIndex(myDbHelper.budgetCategoryID));
                 int subCcategoryID = cursor.getInt(cursor.getColumnIndex(myDbHelper.budgetSubCategoryID));
+                int catPriority = cursor.getInt(cursor.getColumnIndex(myDbHelper.budgetCatPriority));
                 int budget = cursor.getInt(cursor.getColumnIndex(myDbHelper.budgetValue));
                 boolean isConstPayment = (cursor.getInt(cursor.getColumnIndex(myDbHelper.budgetIsConstPayment))) == 1;
                 String shop = cursor.getString(cursor.getColumnIndex(myDbHelper.budgetShop));
@@ -280,10 +371,12 @@ public class myDBAdapter {
 
                 String categoryName = getCategoryNameByID(categoryID);
                 String subCategoryName = getSubCategoryNameByID(subCcategoryID);
-                allBudget.add(new Budget(categoryName, subCategoryName, budget, isConstPayment, shop, chargeDay));
+                allBudget.add(new Budget(catPriority,categoryName, subCategoryName, budget, isConstPayment, shop, chargeDay));
 
-                if (status == -1)
-                    is_error_exists = true;
+                if (status == -1) {
+                    LOG_REPORT.add("No data found in getBudgetDataFromDB method. budget number: " + BudgetNumberBGT + "\n");
+                    isErrorOccurred = true;
+                }
             }
             while (cursor.moveToNext());
             cursor.close();
@@ -294,16 +387,20 @@ public class myDBAdapter {
     public ArrayList<Category> getMonthlyBudgetDataFromDB(Date refMonth) {
         SQLiteDatabase db = myhelper.getWritableDatabase();
         long status = 0;
-        boolean is_error_exists = false;
+        boolean isErrorOccurred = false;
         String wrappedStrRefMonth = wrapStrForDb(reverseDateString(convertDateToString(refMonth,dateFormat),"/"));
         ArrayList<Category> refMonthCategories =  new ArrayList<>();
 
         String selectBudgetData = "SELECT " + myDbHelper.monthlyBudgetCategoryID + "," +
-                                              myDbHelper.monthlyBudgetSubCategoryID + "," +
-                                              myDbHelper.monthlyBudget + "," +
-                                              myDbHelper.monthlyBudgetBalance + " " +
-                                  "FROM " + myDbHelper.MONTHLY_BUDGET_TABLE + " " +
-                                  "WHERE " + myDbHelper.monthlyBudgetRefMonth + " = " + wrappedStrRefMonth;
+                myDbHelper.monthlyBudgetSubCategoryID + "," +
+                myDbHelper.monthlyBudget + "," +
+                myDbHelper.monthlyBudgetBalance + " " +
+                "FROM " + myDbHelper.MONTHLY_BUDGET_TABLE + "," + myDbHelper.BUDGET_TABLE + " " +
+                "WHERE " + myDbHelper.monthlyBudgetRefMonth + " = " + wrappedStrRefMonth +
+                " and " + myDbHelper.monthlyBudgetNumber + " = " +  myDbHelper.budgetNumber +
+                " and " + myDbHelper.monthlyBudgetCategoryID + " = " +  myDbHelper.budgetCategoryID  +
+                " and " + myDbHelper.monthlyBudgetSubCategoryID + " = " +  myDbHelper.budgetSubCategoryID + " " +
+                "ORDER BY " + myDbHelper.budgetCatPriority + " ASC";
         Cursor cursor = db.rawQuery(selectBudgetData, null);
         if (cursor.moveToFirst()) {
             do {
@@ -320,7 +417,10 @@ public class myDBAdapter {
                 refMonthCategories.add(new Category(categoryName, subCategoryName, budget, balance,categoryTrans));
 
                 if (status == -1)
-                    is_error_exists = true;
+                {
+                    LOG_REPORT.add("No data found in getMonthlyBudgetDataFromDB method. ref month: " + wrappedStrRefMonth + "\n");
+                    isErrorOccurred = true;
+                }
             }
             while (cursor.moveToNext());
             cursor.close();
@@ -336,48 +436,69 @@ public class myDBAdapter {
         String wrappedStrRefMonth = wrapStrForDb(reverseDateString(convertDateToString(refMonth,dateFormat),"/"));
         int MaxID = TRAN_ID_PER_MONTH_NUMERATOR;
         String selectCategories = "SELECT " + //myDbHelper.transID + "," +
-                                              myDbHelper.transIDPerMonth + "," +
-                                              myDbHelper.transSubCategoryID + "," +
-                                              myDbHelper.transPaymentMethod + "," +
-                                              myDbHelper.transShop + "," +
-                                              myDbHelper.transPayDate + "," +
-                                              myDbHelper.transPrice + "," +
-                                              myDbHelper.transRegistrationDate + "," +
-                                              myDbHelper.transIsStorno + "," +
-                                              myDbHelper.transStornoOf + " " +
-                                  "FROM " + myDbHelper.TRANSACTION_TABLE + " " +
-                                  "WHERE " + myDbHelper.transReferenceMonth + " = " + wrappedStrRefMonth + " " +
-                                    "AND " +  myDbHelper.transCategoryID + " = " + categoryId;
+                myDbHelper.transIDPerMonth + "," +
+                myDbHelper.transSubCategoryID + "," +
+                myDbHelper.transPaymentMethod + "," +
+                myDbHelper.transShop + "," +
+                myDbHelper.transPayDate + "," +
+                myDbHelper.transPrice + "," +
+                myDbHelper.transRegistrationDate + "," +
+                myDbHelper.transIsStorno + "," +
+                myDbHelper.transStornoOf + " " +
+                "FROM " + myDbHelper.TRANSACTION_TABLE + " " +
+                "WHERE " + myDbHelper.transReferenceMonth + " = " + wrappedStrRefMonth + " " +
+                "AND " +  myDbHelper.transCategoryID + " = " + categoryId;
         Cursor cursor = db.rawQuery( selectCategories, null);
-        while (cursor.moveToNext()) {
-            int IDPerMonth = cursor.getInt(cursor.getColumnIndex(myDbHelper.transIDPerMonth));
-            int subCategoryID = cursor.getInt(cursor.getColumnIndex(myDbHelper.transSubCategoryID));
-            String subCategoryName = getSubCategoryNameByID(subCategoryID);
-            String paymentMethod = cursor.getString(cursor.getColumnIndex(myDbHelper.transPaymentMethod));
-            String shop = cursor.getString(cursor.getColumnIndex(myDbHelper.transShop));
-            String SPayDate = reverseDateString(cursor.getString(cursor.getColumnIndex(myDbHelper.transPayDate)),"/");
-            Date dPayDate = convertStringToDate(SPayDate, dateFormat);
-            int price = cursor.getInt(cursor.getColumnIndex(myDbHelper.transPrice));
-            String sRegistrationDate = cursor.getString(cursor.getColumnIndex(myDbHelper.transRegistrationDate));
-            Date dRegistrationDate = convertStringToDate(sRegistrationDate, dateFormat2);
-            boolean isStorno = (cursor.getInt(cursor.getColumnIndex(myDbHelper.transIsStorno))) == 1;
-            int stornoOf = cursor.getInt(cursor.getColumnIndex(myDbHelper.transStornoOf));
+        if(cursor.moveToFirst()) {
+            do {
+                int IDPerMonth = cursor.getInt(cursor.getColumnIndex(myDbHelper.transIDPerMonth));
+                int subCategoryID = cursor.getInt(cursor.getColumnIndex(myDbHelper.transSubCategoryID));
+                String subCategoryName = getSubCategoryNameByID(subCategoryID);
+                String paymentMethod = cursor.getString(cursor.getColumnIndex(myDbHelper.transPaymentMethod));
+                String shop = cursor.getString(cursor.getColumnIndex(myDbHelper.transShop));
+                String SPayDate = reverseDateString(cursor.getString(cursor.getColumnIndex(myDbHelper.transPayDate)),"/");
+                Date dPayDate = convertStringToDate(SPayDate, dateFormat);
+                double price = cursor.getDouble(cursor.getColumnIndex(myDbHelper.transPrice));
+                String sRegistrationDate = cursor.getString(cursor.getColumnIndex(myDbHelper.transRegistrationDate));
+                Date dRegistrationDate = convertStringToDate(sRegistrationDate, dateFormat2);
+                boolean isStorno = (cursor.getInt(cursor.getColumnIndex(myDbHelper.transIsStorno))) == 1;
+                int stornoOf = cursor.getInt(cursor.getColumnIndex(myDbHelper.transStornoOf));
 
-            if(MaxID < IDPerMonth )
-                MaxID = IDPerMonth;
-            categoryTrans.add(new Transaction( IDPerMonth, categoryName, subCategoryName, paymentMethod, shop, dPayDate, price, dRegistrationDate, isStorno, stornoOf));
+                if(MaxID < IDPerMonth )
+                    MaxID = IDPerMonth;
+                categoryTrans.add(new Transaction( IDPerMonth, categoryName, subCategoryName, paymentMethod, shop, dPayDate, price, dRegistrationDate, isStorno, stornoOf));
+            }
+            while (cursor.moveToNext());
         }
-        cursor.close();
         TRAN_ID_PER_MONTH_NUMERATOR = MaxID;
-        if(TRAN_ID_PER_MONTH_NUMERATOR == 8)
-        {
-            int a = 0;
-        }
-
+        if(!cursor.moveToFirst())
+            LOG_REPORT.add("No data found in getTransactionsRefMonth method. ref month: " + wrappedStrRefMonth + ", category name: " + categoryName + "\n");
+        cursor.close();
         return categoryTrans;
     }
 
-    public long insertBudgetTableData(long budgetNumber, int budgetCategoryID,int budgetSubCategoryID, int budgetValue,boolean budgetIsConstPayment, String budgetShop,int budgetChargeDay)
+    public boolean updateStornoTransaction(Date refMonth, int tranIdPerMonth, int stornoOf)
+    {
+        SQLiteDatabase db = myhelper.getWritableDatabase();
+        String strRefMonth = wrapStrForDb(reverseDateString(convertDateToString(refMonth,dateFormat),"/"));
+
+        String setStornoTransactions = "UPDATE " + myhelper.TRANSACTION_TABLE +
+                " SET " + myDbHelper.transIsStorno + " = " + String.valueOf(1) + "," +
+                myDbHelper.transStornoOf + " = " + String.valueOf(stornoOf) +
+                " WHERE " + myDbHelper.transReferenceMonth + " = " + strRefMonth +
+                " AND "   + myDbHelper.transIDPerMonth + " = " + tranIdPerMonth;
+        try {
+            db.execSQL(setStornoTransactions);
+        }
+        catch(Exception e)
+        {
+            LOG_REPORT.add("Exception in updateStornoTransaction method:( ref month: " + strRefMonth + ", tran Id Per Month: " + tranIdPerMonth + ", stornoOf: " + stornoOf + ")\n" + e.getMessage().toString() + "\n");
+            return false;
+        }
+        return true;
+    }
+
+    public long insertBudgetTableData(long budgetNumber, int budgetCategoryID,int budgetSubCategoryID, int catPriority, int budgetValue,boolean budgetIsConstPayment, String budgetShop,int budgetChargeDay)
     {
         SQLiteDatabase db = myhelper.getWritableDatabase();
         ContentValues contentValues = new ContentValues();
@@ -387,17 +508,20 @@ public class myDBAdapter {
         contentValues.put(myDbHelper.budgetNumber, budgetNumber);
         contentValues.put(myDbHelper.budgetCategoryID, budgetCategoryID);
         contentValues.put(myDbHelper.budgetSubCategoryID, budgetSubCategoryID);
+        contentValues.put(myDbHelper.budgetCatPriority, catPriority);
         contentValues.put(myDbHelper.budgetValue, budgetValue);
         contentValues.put(myDbHelper.budgetIsConstPayment, budgetIsConstPayment);
         contentValues.put(myDbHelper.budgetShop, budgetShop);
         contentValues.put(myDbHelper.budgetChargeDay, budgetChargeDay);
         id = db.insert(myhelper.BUDGET_TABLE, null, contentValues);
+        if(id == -1)
+            LOG_REPORT.add("Insertion failed in insertBudgetTableData method. budget number: " + budgetNumber + ", budget category ID: " + budgetCategoryID + "\n");
         return id;
     }
 
+    //public long insertMonthlyBudgetData(Date monthlyBudgetRefMonth, int budgetCategoryID,int budgetSubCategoryID, int catPriority, int monthlyBudgetNumber,int monthlyBudget, double monthlyBudgetBalance)
     public long insertMonthlyBudgetData(Date monthlyBudgetRefMonth, int budgetCategoryID,int budgetSubCategoryID, int monthlyBudgetNumber,int monthlyBudget, double monthlyBudgetBalance)
     {
-
         String strRefMonth = reverseDateString(convertDateToString(monthlyBudgetRefMonth,dateFormat),"/");
         SQLiteDatabase db = myhelper.getWritableDatabase();
         ContentValues contentValues = new ContentValues();
@@ -405,11 +529,14 @@ public class myDBAdapter {
         contentValues.put(myDbHelper.monthlyBudgetRefMonth, strRefMonth);
         contentValues.put(myDbHelper.monthlyBudgetCategoryID, budgetCategoryID);
         contentValues.put(myDbHelper.monthlyBudgetSubCategoryID, budgetSubCategoryID);
+        //contentValues.put(myDbHelper.monthlyBudgetNumber, catPriority);
         contentValues.put(myDbHelper.monthlyBudgetNumber, monthlyBudgetNumber);
         contentValues.put(myDbHelper.monthlyBudget,monthlyBudget);
         contentValues.put(myDbHelper.monthlyBudgetBalance, monthlyBudgetBalance);
 
         id = db.insert(myhelper.MONTHLY_BUDGET_TABLE, null, contentValues);
+        if(id == -1)
+            LOG_REPORT.add("Insertion failed in insertMonthlyBudgetData method. ref month: " + strRefMonth + ", budget category ID: " + budgetCategoryID + "\n");
         return id;
     }
 
@@ -446,6 +573,8 @@ public class myDBAdapter {
         contentValues.put(myDbHelper.transIsStorno, transIsStorno);
         contentValues.put(myDbHelper.transStornoOf, transStornoOf);
         id = db.insert(myhelper.TRANSACTION_TABLE, null, contentValues);
+        if(id == -1)
+            LOG_REPORT.add("Insertion failed in insertTransactionData method. ref month: " + wrappedRefMonth + ", transaction ID per month: " + transIDPerMonth + ", transaction category ID: " + transCategoryID + ", trans shop: " + transShop +"\n");
         return id;
     }
 
@@ -487,7 +616,6 @@ public class myDBAdapter {
         Cursor c1 = db.rawQuery("SELECT " +  myhelper.categoryID + " FROM " + myhelper.CATEGORY_TABLE + " WHERE " + myhelper.categoryName + "='" + categoryName + "'", null);
         if(c1.moveToFirst())
             return c1.getInt(0);
-        c1.close();
         return -1;
     }
 
@@ -502,23 +630,6 @@ public class myDBAdapter {
             return subCatId;
         }
         return -1;
-    }
-
-    public ArrayList<String> getAllShops()
-    {
-        SQLiteDatabase db = myhelper.getWritableDatabase();
-        Cursor c = db.rawQuery("SELECT DISTINCT " +  myhelper.transShop + " FROM " + myhelper.TRANSACTION_TABLE , null);
-        int i = 0;
-        ArrayList allShops = new ArrayList();
-        if(c.moveToFirst())
-        {
-            while(c.moveToNext())
-            {
-                allShops.add(c.getString(c.getColumnIndex(myDbHelper.transShop)));
-            }
-        }
-        c.close();
-        return allShops;
     }
 
 /*    public String getData(String tableName) {
@@ -622,6 +733,7 @@ public class myDBAdapter {
         public static final String budgetNumber = "BGT_BUDGET_NUMBER";
         public static final String budgetCategoryID = "BGT_CATEGORY_ID";
         public static final String budgetSubCategoryID = "BGT_SUB_CATEGORY_ID";
+        public static final String budgetCatPriority = "BGT_CAT_PRIORITY";
         public static final String budgetValue = "BGT_VALUE";
         public static final String budgetIsConstPayment = "BGT_IS_CONST_PAYMENT";
         public static final String budgetShop = "BGT_SHOP";
@@ -687,6 +799,7 @@ public class myDBAdapter {
                         budgetNumber + " INTEGER NOT NULL CHECK(" + budgetNumber + " > 0)," +
                         budgetCategoryID + " INTEGER NOT NULL," +
                         budgetSubCategoryID + " INTEGER NOT NULL," +
+                        budgetCatPriority + " INTEGER NOT NULL," +
                         budgetValue + " INTEGER NOT NULL," +
                         budgetIsConstPayment + " BOOLEAN," +
                         budgetShop + " TEXT," +
