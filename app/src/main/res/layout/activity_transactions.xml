@@ -18,14 +18,14 @@
 
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
+                android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:weightSum="1">
 
                 <TextView
-                    android:id="@+id/inserTransactionLabel"
+                    android:id="@+id/transactionsTitleLabel"
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent"
+                    android:layout_height="wrap_content"
                     android:text="עסקאות"
                     android:textAlignment="center"
                     android:textColor="@android:color/black"
@@ -41,16 +41,46 @@
                 android:weightSum="1">
 
                 <LinearLayout
+                    android:id="@+id/Cat_TotalLL"
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:layout_weight="0.97"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
                     android:orientation="horizontal">
 
                     <Spinner
                         android:id="@+id/categorySpinnerTransactions"
-                        android:layout_width="wrap_content"
-                        android:layout_height="match_parent"
-                        android:layout_weight="1" />
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="0.5"
+                        android:textAlignment="textStart"/>
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="0.25" />
+
+                    <TextView
+                        android:id="@+id/textViewTotalTransactionsLabel"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="0.1"
+                        android:text='סה"כ'
+                        android:textAlignment="center"
+                        android:textColor="@android:color/black"
+                        android:textSize="12dp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/textViewTotalTransactions"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="top|end"
+                        android:layout_weight="0.15"
+                        android:text="0"
+                        android:textColor="@android:color/black"
+                        android:textDirection="ltr"
+                        android:textSize="12dp"
+                        android:textStyle="bold" />
 
                 </LinearLayout>
 

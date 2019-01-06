@@ -1,5 +1,6 @@
 package com.example.brosh.mba;
 
+import android.annotation.TargetApi;
 import android.app.ActionBar;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
@@ -9,7 +10,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.RequiresApi;
 import android.support.v7.app.AppCompatActivity;
-import android.text.util.Linkify;
 import android.util.DisplayMetrics;
 import android.view.View;
 import android.view.ViewGroup;
@@ -26,21 +26,25 @@ import java.util.Date;
 
 import static com.example.brosh.mba.MainActivity.month;
 import static com.example.brosh.mba.global.DOWN_ARROW;
-import static com.example.brosh.mba.global.TRAN_ID_PER_MONTH_NUMERATOR;
 import static com.example.brosh.mba.global.UP_ARROW;
 import static com.example.brosh.mba.global.convertDateToString;
 import static com.example.brosh.mba.global.dateFormat;
 import static com.example.brosh.mba.global.getYearMonth;
 import static com.example.brosh.mba.global.isFirstTime;
+import static com.example.brosh.mba.global.reverseLinearLayout;
+import static com.example.brosh.mba.global.setHeaderProperties;
 import static com.example.brosh.mba.global.sort;
+import static com.example.brosh.mba.global.strikeThroughText;
 
 public class TransactionsActivity extends AppCompatActivity {
 
     LinearLayout ll;
     Spinner categoriesSpinner;
-    ArrayList<TextView []> textViews = new ArrayList<TextView []>();
+    ArrayList<TextView []> textViews = new ArrayList();
 
     int widthDisplay;
+    char quotes = '"';
+    String totalName = "סה"+ quotes + "כ";
 
 
     @Override
@@ -84,18 +88,14 @@ public class TransactionsActivity extends AppCompatActivity {
         ab.setDisplayShowTitleEnabled(false); //hide the default title
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     public void init()
     {
         //global.setCatArrayHebNames();
-
         ArrayList<String> spinnerCategories = new ArrayList<String>(month.getCategoriesNames());
         spinnerCategories.add(0,"הכל");
 
-        ArrayAdapter<String> adapter;
-        adapter = new ArrayAdapter<String>(this,
-                R.layout.custom_spinner, spinnerCategories);
-        //adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        categoriesSpinner.setAdapter(adapter);
+        setSpinnersAllignment();
     }
 
     public int getIndexRowById(long ID)
@@ -108,6 +108,7 @@ public class TransactionsActivity extends AppCompatActivity {
         return -1;
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     public TextView[] getStornoRow(String catName, Transaction transaction)
     {
         ArrayList<Transaction> categoryTrans = month.getTransactions(catName);
@@ -135,7 +136,41 @@ public class TransactionsActivity extends AppCompatActivity {
 
         TV.setLayoutParams(paramsTV);
     }
+/*        if(isHeaderLine)
+        {
+            if(language.language.equals("EN"))
+            {
+                ((TextView) row[i]).setTextDirection(View.TEXT_DIRECTION_LTR);
+                ((TextView) row[i]).setTextAlignment(View.TEXT_ALIGNMENT_TEXT_START);
+            }
+            else if(language.language.equals("HEB"))
+            {
+                ((TextView) row[i]).setTextDirection(View.TEXT_DIRECTION_RTL);
+                ((TextView) row[i]).setTextAlignment(View.TEXT_ALIGNMENT_TEXT_START);
+            }
+        }*/
 
+    public void setTextViewsLength(TextView[] row, boolean isIncludeCategory)
+    {
+        int i = 0;
+        if (isIncludeCategory) {
+            setTVLayoutParams(row[i++], widthDisplay * 12 / 100);
+            setTVLayoutParams(row[i++], widthDisplay * 20 / 100);
+            setTVLayoutParams(row[i++], widthDisplay * 15 / 100);
+            setTVLayoutParams(row[i++], widthDisplay * 19 / 100);
+            setTVLayoutParams(row[i++], widthDisplay * 20 / 100);//replace 20 in 25
+            setTVLayoutParams(row[i++], widthDisplay * 14 / 100);
+        } else {
+            setTVLayoutParams(row[i++], widthDisplay * 16 / 100);
+            i++;
+            setTVLayoutParams(row[i++], widthDisplay * 19 / 100);
+            setTVLayoutParams(row[i++], widthDisplay * 23 / 100);
+            setTVLayoutParams(row[i++], widthDisplay * 24 / 100);//replace 20 in 25
+            setTVLayoutParams(row[i++], widthDisplay * 18 / 100);
+        }
+    }
+
+    @TargetApi(Build.VERSION_CODES.O)
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR1)
     public void addCategoryRow(Transaction tran, String ID, String categoryName,String paymentMethod, String shop, String tranDate, String tranPrice, boolean isIncludeCategory, boolean isHeaderLine)
     {
@@ -145,26 +180,24 @@ public class TransactionsActivity extends AppCompatActivity {
         TextView shopTV = new TextView(TransactionsActivity.this);
         TextView tranDateTV = new TextView(TransactionsActivity.this);
         TextView tranPriceTV = new TextView(TransactionsActivity.this);
+        tranPriceTV.setTextDirection(View.TEXT_DIRECTION_LTR);
+        tranPriceTV.setTextAlignment(View.TEXT_ALIGNMENT_TEXT_START);
+
 
         TextView [] row = new TextView[6];
-        int i = 0;
-        row[i++] = IDTV;
-        row[i++] = catNameTV;
-        row[i++] = paymentMethodTV;
-        row[i++] = shopTV;
-        row[i++] = tranDateTV;
-        row[i++] = tranPriceTV;
+        int index = 0;
+        row[index++] = IDTV;
+        row[index++] = catNameTV;
+        row[index++] = shopTV;
+        row[index++] = tranDateTV;
+        row[index++] = paymentMethodTV;
+        row[index] = tranPriceTV;
 
+        //setLanguageProperties(row,isHeaderLine);
         textViews.add(row);
-        
 
         if(isIncludeCategory == true )
-        {
-           // if (isHeaderLine == true)
             catNameTV.setText(categoryName);
-           // else
-           //     catNameTV.setText(catNamesHebArray.get(global.getIndexByName(categoryName)-1));
-        }
         IDTV.setText(ID);
         shopTV.setText(shop);
         paymentMethodTV.setText(paymentMethod);
@@ -177,31 +210,9 @@ public class TransactionsActivity extends AppCompatActivity {
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,1f));
 
-        LinearLayout.LayoutParams paramLL = (new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT,1f));
-
         newll.setOrientation(LinearLayout.HORIZONTAL);
 
-        if(isIncludeCategory)
-        {
-            setTVLayoutParams(IDTV, widthDisplay * 12 / 100);
-            setTVLayoutParams(catNameTV, widthDisplay * 20 / 100);
-            setTVLayoutParams(shopTV, widthDisplay * 15 / 100);
-            setTVLayoutParams(tranDateTV, widthDisplay * 19 / 100);
-            setTVLayoutParams(paymentMethodTV, widthDisplay * 20 / 100);//replace 20 in 25
-            setTVLayoutParams(tranPriceTV, widthDisplay * 14 / 100);
-        }
-        else
-        {
-            setTVLayoutParams(IDTV, widthDisplay * 16 / 100);
-            setTVLayoutParams(shopTV, widthDisplay * 19 / 100);
-            setTVLayoutParams(tranDateTV, widthDisplay * 23 / 100);
-            setTVLayoutParams(paymentMethodTV, widthDisplay * 24 / 100);//replace 20 in 25
-            setTVLayoutParams(tranPriceTV, widthDisplay * 18 / 100);
-        }
-
-        int wi = IDTV.getWidth();
+        setTextViewsLength(row,isIncludeCategory);
 
         IDTV.setTextSize(11);
         catNameTV.setTextSize(11);
@@ -210,7 +221,7 @@ public class TransactionsActivity extends AppCompatActivity {
         tranDateTV.setTextSize(11);
         tranPriceTV.setTextSize(11);
 
-        if(ID == "סך הכל")
+        if(ID == totalName)
         {
             IDTV.setTypeface(null, Typeface.BOLD);
             IDTV.setTextSize(11);
@@ -219,20 +230,8 @@ public class TransactionsActivity extends AppCompatActivity {
             tranPriceTV.setTextSize(11);
             tranPriceTV.setTextColor(Color.BLACK);
         }
-        if(isHeaderLine != true)
-        {
-            tranPriceTV.setTextDirection(View.TEXT_DIRECTION_LTR);
-            tranPriceTV.setTextAlignment(View.TEXT_ALIGNMENT_TEXT_START);
-         //   paymentMethodTV.setTextDirection(View.TEXT_DIRECTION_LTR);
-         //   paymentMethodTV.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
-        }
-//        paymentMethodTV.setTextDirection(View.TEXT_DIRECTION_LTR);
-//        paymentMethodTV.setTextAlignment(View.TEXT_ALIGNMENT_TEXT_START);
-        //tranDateTV.setTextAlignment(View.TEXT_ALIGNMENT_TEXT_START);
-        //tranPriceTV.setTextAlignment(View.TEXT_ALIGNMENT_TEXT_START);
 
-
-        if(isHeaderLine == true)
+        if(isHeaderLine)
         {
             setHeaderProperties(IDTV);
             setHeaderProperties(catNameTV);
@@ -243,42 +242,39 @@ public class TransactionsActivity extends AppCompatActivity {
         }
 
         newll.setLayoutParams(paramsTV);
-        newll.addView(IDTV);
 
         TextView []stornoRow = getStornoRow(categoryName, tran);
         Boolean isStornoRow = (stornoRow != null);
         if(isStornoRow == true)
         {
-            global.strikeThroughText(IDTV);
-            global.strikeThroughText(catNameTV);
-            global.strikeThroughText(paymentMethodTV);
-            global.strikeThroughText(shopTV);
-            global.strikeThroughText(tranDateTV);
-            global.strikeThroughText(tranPriceTV);
-
-/*          global.strikeThroughText(stornoRow[0]);
-            global.strikeThroughText(stornoRow[1]);
-            global.strikeThroughText(stornoRow[2]);
-            global.strikeThroughText(stornoRow[3]);
-            global.strikeThroughText(stornoRow[4]);*/
+            strikeThroughText(IDTV);
+            strikeThroughText(catNameTV);
+            strikeThroughText(paymentMethodTV);
+            strikeThroughText(shopTV);
+            strikeThroughText(tranDateTV);
+            strikeThroughText(tranPriceTV);
         }
 
-        if(isIncludeCategory == true)
+        newll.addView(IDTV);
+        if (isIncludeCategory == true)
             newll.addView(catNameTV);
 
         newll.addView(shopTV);
         newll.addView(tranDateTV);
         newll.addView(paymentMethodTV);
         newll.addView(tranPriceTV);
+
         ll.addView(newll);
 
         if(isHeaderLine == true)
             setOnClickTextViews();
     }
 
+    @TargetApi(Build.VERSION_CODES.O)
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR1)
     public void setTransactionsInGui(String catName, String sortBy, char ascOrDesc)
     {
+        ((TextView) findViewById(R.id.textViewTotalTransactions)).setText(String.valueOf(0));
         Boolean isIncludeCategory = false;
         if (catName.equals("הכל"))
             isIncludeCategory = true;
@@ -303,7 +299,8 @@ public class TransactionsActivity extends AppCompatActivity {
         if (month.getTransactions().size() > 0)
         {
             tranSum = Math.round(tranSum * 100.d) / 100.0d;
-            addCategoryRow(null, "סך הכל", "", "", "", "", String.valueOf(tranSum), isIncludeCategory, false);
+            addCategoryRow(null, totalName, "", "", "", "", String.valueOf(tranSum), isIncludeCategory, false);
+            ((TextView) findViewById(R.id.textViewTotalTransactions)).setText(String.valueOf(tranSum));
         }
     }
     public void setCloseButton()
@@ -312,18 +309,13 @@ public class TransactionsActivity extends AppCompatActivity {
         myButton.setText("סגור");
         myButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View view) {
-          setRequestedOrientation (ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);//Rotate the screen to to be on PORTRAIT moade only
+                setRequestedOrientation (ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);//Rotate the screen to to be on PORTRAIT moade only
                 finish();
             }
         });
 
         TableLayout.LayoutParams lp = new TableLayout.LayoutParams(TableLayout.LayoutParams.MATCH_PARENT, TableLayout.LayoutParams.WRAP_CONTENT);
-
         LinearLayout newll = new LinearLayout(TransactionsActivity.this);
-
-        LinearLayout.LayoutParams paramLL = (new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT,1f));
 
         newll.setOrientation(LinearLayout.HORIZONTAL);
         newll.addView(myButton,lp);
@@ -344,24 +336,69 @@ public class TransactionsActivity extends AppCompatActivity {
         //ll.addView(myButton, lp);
     }*/
 
+    @TargetApi(Build.VERSION_CODES.O)
+    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR1)
+    public void setSpinnersAllignment()
+    {
+        ArrayAdapter<String> adapter;
+        ArrayList<String> allCategories = month.getCategoriesNames();
+        allCategories.add(0,"הכל");
+        month.getCategoriesNames();
+            adapter = new ArrayAdapter<String>(this,
+                    R.layout.custom_spinner, allCategories);
+            categoriesSpinner.setAdapter(adapter);
+    }
+
+    @TargetApi(Build.VERSION_CODES.O)
+    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR1)
+    public void setButtonsNames()
+    {
+        // Transactions window buttons
+        ((TextView)findViewById(R.id.textViewTotalTransactionsLabel)).setText(totalName);
+        ((TextView)findViewById(R.id.transactionsTitleLabel)).setText("עסקאות");
+        if(month != null)
+            setTitle(getYearMonth(month.getMonth(), '.'));
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR1)
+    public void setLanguageConf()
+    {
+        LinearLayout firstLL = (LinearLayout) findViewById(R.id.Cat_TotalLL);
+        for (int i = 0;i < firstLL.getChildCount();i++)
+        {
+            View v = firstLL.getChildAt(i);
+            v.setTextDirection(View.TEXT_DIRECTION_LTR);
+            v.setTextAlignment(View.TEXT_ALIGNMENT_TEXT_START);
+            if(i == 3 )
+            {
+                v.setTextDirection(View.TEXT_DIRECTION_RTL);
+                v.setTextAlignment(View.TEXT_ALIGNMENT_TEXT_START);
+            }
+        }
+        reverseLinearLayout(firstLL);
+    }
+
+    @TargetApi(Build.VERSION_CODES.O)
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR1)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_transactions);
+
+        setButtonsNames();
         setTitle( getYearMonth(month.getMonth(),'.'));
         //setRequestedOrientation (ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);//Rotate the screen to to be on landspace moade only
+
+
         textViews.clear();
         DisplayMetrics dm = new DisplayMetrics();
         this.getWindow().getWindowManager().getDefaultDisplay().getMetrics(dm);
         widthDisplay = dm.widthPixels;
-
         isFirstTime = !isFirstTime;
-
         ll = (LinearLayout)findViewById( R.id.LLTransactions);
         categoriesSpinner =  (Spinner) findViewById(R.id.categorySpinnerTransactions);
-
-
+        setSpinnersAllignment();
+        addCategoryRow(null, "מזהה","קטגוריה", "א.תשלום", "חנות", "ת.עסקה", "סכום",true, true);
         categoriesSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id)
@@ -369,24 +406,45 @@ public class TransactionsActivity extends AppCompatActivity {
                 String categoryName = categoriesSpinner.getSelectedItem().toString();
                 //clearLayout();
                 clearRowsExeptHaeder();
+                //addCategoryRow(null, language.IDName,language.categoryName, language.paymentMethodName, language.shopName, language.chargeDateName, language.sumName,true, true);
                 setTextViewsHeader();
-                //Include category
-                if (categoryName != "הכל")
+
+                LinearLayout llTitleTrans = ((LinearLayout) ll.getChildAt(0));
+
+                // Default is Hebrew
+                TextView IDTV = (TextView) llTitleTrans.getChildAt(0);
+                TextView catNameTV = (TextView) llTitleTrans.getChildAt(1);
+                TextView shopTV = (TextView) llTitleTrans.getChildAt(2);
+                TextView tranDateTV = (TextView) llTitleTrans.getChildAt(3);
+                TextView paymentMethodTV = (TextView) llTitleTrans.getChildAt(4);
+                TextView tranPriceTV = (TextView) llTitleTrans.getChildAt(5);
+
+                //Except category
+                if (!categoryName.equals("הכל"))
                 {
                     LinearLayout headerRowLL = (LinearLayout) ll.getChildAt(0);
-                    headerRowLL.getChildAt(1).setVisibility(View.GONE);
-                    setTVLayoutParams((TextView)headerRowLL.getChildAt(0), widthDisplay * 16 / 100);
-                    setTVLayoutParams((TextView)headerRowLL.getChildAt(2), widthDisplay * 19 / 100);
-                    setTVLayoutParams((TextView)headerRowLL.getChildAt(3), widthDisplay * 23 / 100);
-                    setTVLayoutParams((TextView)headerRowLL.getChildAt(4), widthDisplay * 24 / 100);//replace 20 in 25
-                    setTVLayoutParams((TextView)headerRowLL.getChildAt(5), widthDisplay * 18 / 100);
+                    catNameTV.setVisibility(View.GONE);
+                    setTVLayoutParams(IDTV, widthDisplay * 16 / 100);
+                    setTVLayoutParams(shopTV, widthDisplay * 19 / 100);
+                    setTVLayoutParams(tranDateTV, widthDisplay * 23 / 100);
+                    setTVLayoutParams(paymentMethodTV, widthDisplay * 24 / 100);//replace 20 in 25
+                    setTVLayoutParams(tranPriceTV, widthDisplay * 18 / 100);
                 }
-                   // addCategoryRow(null, "מזהה" ,"קטגוריה","חנות", "תאריך", "סכום",true, true);
+                // addCategoryRow(null, "מזהה" ,"קטגוריה","חנות", "תאריך", "סכום",true, true);
                 else
-                    ((LinearLayout) ll.getChildAt(0)).getChildAt(1).setVisibility(View.VISIBLE);
-                    //Not include category
-                   // addCategoryRow(null, "מזהה" ,"categoryName","חנות", "תאריך", "סכום",false, true);
+                {
+                    catNameTV.setVisibility(View.VISIBLE);
+                    setTVLayoutParams(IDTV, widthDisplay * 12 / 100);
+                    setTVLayoutParams(catNameTV, widthDisplay * 20 / 100);
+                    setTVLayoutParams(shopTV, widthDisplay * 15 / 100);
+                    setTVLayoutParams(tranDateTV, widthDisplay * 19 / 100);
+                    setTVLayoutParams(paymentMethodTV, widthDisplay * 20 / 100);//replace 20 in 25
+                    setTVLayoutParams(tranPriceTV, widthDisplay * 14 / 100);
+                }
+                //Not include category
+                // addCategoryRow(null, "מזהה" ,"categoryName","חנות", "תאריך", "סכום",false, true);
                 setTransactionsInGui(categoryName,"מזהה", UP_ARROW);
+
                 if(ll.getChildCount() == 1)//if no transactions and only header in layout
                 {
                     TextView messageTV = new TextView(TransactionsActivity.this);
@@ -405,45 +463,34 @@ public class TransactionsActivity extends AppCompatActivity {
             }
 
         });
-
         init();
-        //clearLayout();
-        addCategoryRow(null, "מזהה","קטגוריה", "א.תשלום", "חנות", "ת.עסקה", "סכום",true, true);
+        //addCategoryRow(null, language.IDName,language.categoryName, language.paymentMethodName, language.shopName, language.chargeDateName, language.sumName,true, true);
         //textViews.clear();
-        setTransactionsInGui("הכל", "מזהה", UP_ARROW);
+        //setTransactionsInGui(language.all, language.IDName, UP_ARROW);
         //setCloseButton();
     }
 
     public void clearLayout()
     {
-        //ll = (LinearLayout)findViewById( R.id.LLTransactions);
         if (ll.getChildCount() > 0 )
         {
             ll.removeAllViews();
             ll.invalidate();
-            //ll.addView(categoriesSpinner);
         }
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR1)
+/*    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR1)
     public void setHeaderProperties(TextView tv)
     {
         tv.setTypeface(null, Typeface.BOLD);
-        tv.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
         tv.setTextSize(14);
         tv.setClickable(true);
         Linkify.addLinks(tv,Linkify.ALL);
-    }
+    }*/
 
     public void setTextViewsHeader()
     {
         LinearLayout rowLL = (LinearLayout)ll.getChildAt(0);//textViews.get(0);
-        ((TextView)rowLL.getChildAt(0)).setText("מזהה");
-        ((TextView)rowLL.getChildAt(1)).setText("קטגוריה");
-        ((TextView)rowLL.getChildAt(2)).setText("חנות");
-        ((TextView)rowLL.getChildAt(3)).setText("ת.עסקה");
-        ((TextView)rowLL.getChildAt(4)).setText("א.תשלום");
-        ((TextView)rowLL.getChildAt(5)).setText("סכום");
 
         for(int i = 0; i < 6; i++)
             ((TextView)rowLL.getChildAt(i)).setTextColor(Color.BLACK);
@@ -502,8 +549,9 @@ public class TransactionsActivity extends AppCompatActivity {
                         }
                     }
                     clearRowsExeptHaeder();
+                    //addCategoryRow(null, language.IDName,language.categoryName, language.paymentMethodName, language.shopName, language.chargeDateName, language.sumName,true, true);
                     setTransactionsInGui(categoriesSpinner.getSelectedItem().toString(), text, ascOrDesc);
-                    setCloseButton();
+                    //setCloseButton();
                 }
             });
         }
@@ -512,11 +560,6 @@ public class TransactionsActivity extends AppCompatActivity {
     public void clearRowsExeptHaeder()
     {
         for (int i = ll.getChildCount() - 1; i > 0; i--)
-        {
             ll.removeViewAt(i);
-/*            Log.i("TAG IS", i + "");
-            LinearLayout rowLL = (LinearLayout) ll.getChildAt(i);
-            rowLL.removeAllViews();*/
-        }
     }
 }

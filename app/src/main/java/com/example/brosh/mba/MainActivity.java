@@ -148,7 +148,7 @@ public class MainActivity extends AppCompatActivity
                 //    myLastUpdatedTimeMillis = lastUpdatedTimeMillis;
                 if(reasonCheckFileChanged.equals("Write") && myLastUpdatedTimeMillis == lastUpdatedTimeMillis)
                 {
-                    myLastUpdatedTimeMillis = lastUpdatedTimeMillis;
+                    //myLastUpdatedTimeMillis = lastUpdatedTimeMillis;
                     int maxIDPerMonth = monthlyBudgetDB.getMaxIDPerMonthTRN(month.getMonth());
                     month.updateMonthData(maxIDPerMonth + 1);
                     uploadCommonFile();

@@ -51,7 +51,7 @@ public class global {
     public static int TRAN_ID_PER_MONTH_NUMERATOR = 1;
     public static String DCIM = "";
     public static String PROJECT_PATH = "";
-    public static String DB_FOLDER_PATH = "/data/data/monthlybudget.apps.danielbrosh.monthlybudget/databases";
+    public static String DB_FOLDER_PATH = "/data/data/com.example.brosh.mba/databases";
     public static String DB_FILE_NAME = "MonthlyBudget";
     public static String FILE_NAME = "Monthly Budget";
     public static String FILE_NAME_BUDGET = "Budget";
